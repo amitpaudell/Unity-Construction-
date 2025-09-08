@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Card from '../components/Card';
 
 const projects = [
@@ -53,6 +53,22 @@ const projects = [
 ];
 
 const Projects = () => {
+  const [dbProjects, setDbProjects] = useState([]);
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const res = await fetch('http://localhost:3000/api/construction');
+        const json = await res.json();
+        if (res.ok && Array.isArray(json)) {
+          setDbProjects(json);
+        }
+      } catch (err) {
+        console.error('Failed to fetch projects', err);
+      }
+    };
+    fetchProjects();
+  }, []);
   return (
     <div className="px-4 md:px-12 py-12 bg-gray-50 min-h-screen">
       <div className="max-w-6xl mx-auto">
@@ -60,11 +76,20 @@ const Projects = () => {
           Our Projects
         </h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {projects.map((project, idx) => (
+          {(dbProjects.length ? dbProjects : projects).map((project, idx) => (
             <Card
-              key={idx}
-              title={project.title}
-              image={project.image}
+              key={project._id || idx}
+              title={project.title || project.name}
+              image={
+                project.image
+                  ? project.image
+                      .replace(
+                        /^([A-Z]:)?[\\/].*?[\\/]images[\\/]/i,
+                        '/images/'
+                      )
+                      .replace(/\\/g, '/')
+                  : project.image
+              }
               description={project.description}
               buttonLabel={project.buttonLabel}
               href={project.href}

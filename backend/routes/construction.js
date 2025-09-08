@@ -16,6 +16,6 @@ router.post('/', constructionContoller.createConstruction);
 router.delete('/:id', constructionContoller.deleteConstruction);
 
 // UPDATE a workout
-router.patch('/:id', constructionContoller.updateConstruction);
+router.put('/:id', constructionContoller.updateConstruction);
 
 module.exports = router;

@@ -1,22 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const ProjectsD = () => {
+  //fetching from db
+  const [constructionProject, setConstructionProject] = useState(null);
+
+  useEffect(() => {
+    const fetchConstructionP = async () => {
+      const response = await fetch('http://localhost:3000/api/construction');
+      const json = await response.json();
+
+      if (response.ok) {
+        setConstructionProject(json);
+      }
+    };
+    fetchConstructionP();
+  }, []);
+
   const [showForm, setShowForm] = useState(false);
   const [image, setImage] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState(null);
-  // Sample data
-  const projects = [
-    { id: 1, name: 'Skyline Apartments' },
-    { id: 2, name: 'Unity Business Park' },
-    { id: 3, name: 'Riverfront Bridge' },
-    { id: 4, name: 'Greenfield School' },
-    { id: 5, name: 'City Center Mall' },
-  ];
+
+  // New state for edit mode and editing project id
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState(null);
 
   const handleCreate = () => {
     setShowForm(true);
+    setIsEditMode(false);
+    setEditingProjectId(null);
+    setTitle('');
+    setDescription('');
+    setImage('');
+    setError(null);
   };
 
   const handleImageChange = (e) => {
@@ -27,28 +44,111 @@ const ProjectsD = () => {
     setImage(filename);
   };
 
+  const handleRemoveImage = () => {
+    setImage('');
+  };
+
+  const handleTriggerImageSelect = () => {
+    const input = document.getElementById('project-image-input');
+    if (input) input.click();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const constructionProject = { image, title, description };
-    const response = await fetch('http://localhost:3000/api/construction', {
-      method: 'POST',
-      body: JSON.stringify(constructionProject),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const constructionProjectData = { image, title, description };
+
+    if (isEditMode && editingProjectId) {
+      // Edit mode: update existing project
+      const response = await fetch(
+        `http://localhost:3000/api/construction/${editingProjectId}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(constructionProjectData),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      const json = await response.json();
+      if (!response.ok) {
+        setError(json.error);
+      } else {
+        setTitle('');
+        setDescription('');
+        setImage('');
+        setError(null);
+        setShowForm(false);
+        setIsEditMode(false);
+        setEditingProjectId(null);
+        // Update the project in the list
+        setConstructionProject((prevCP) =>
+          prevCP.map((project) =>
+            (project._id || project.id) === editingProjectId
+              ? { ...project, ...constructionProjectData }
+              : project
+          )
+        );
+      }
+    } else {
+      // Create mode: add new project
+      const response = await fetch('http://localhost:3000/api/construction', {
+        method: 'POST',
+        body: JSON.stringify(constructionProjectData),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const json = await response.json();
+      if (!response.ok) {
+        setError(json.error);
+      }
+
+      if (response.ok) {
+        setTitle('');
+        setDescription('');
+        setImage('');
+        setError(null);
+        setShowForm(false);
+        // Add the new project to the list
+        setConstructionProject((prevCP) =>
+          Array.isArray(prevCP) ? [json, ...prevCP] : [json]
+        );
+      }
+    }
+  };
+
+  // Edit handler: populate form with project data and switch to edit mode
+  const handleEdit = (id) => {
+    const projectToEdit =
+      Array.isArray(constructionProject) &&
+      constructionProject.find((project) => (project._id || project.id) === id);
+    if (projectToEdit) {
+      setTitle(projectToEdit.title || projectToEdit.name || '');
+      setDescription(projectToEdit.description || '');
+      setImage(projectToEdit.image || '');
+      setShowForm(true);
+      setIsEditMode(true);
+      setEditingProjectId(id);
+      setError(null);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const response = await fetch(
+      `http://localhost:3000/api/construction/${id}`,
+      {
+        method: 'DELETE',
+      }
+    );
 
     const json = await response.json();
-    if (!response.ok) {
-      setError(json.error);
-    }
-
     if (response.ok) {
-      setTitle('');
-      setDescription('');
-      console.log('new workout added', json);
-      setError(null);
+      console.log('Construction deleted ');
+      setConstructionProject((prevCP) =>
+        prevCP.filter((project) => project._id !== id)
+      );
     }
   };
 
@@ -67,7 +167,7 @@ const ProjectsD = () => {
       {showForm && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Create New Project
+            {isEditMode ? 'Edit Project' : 'Create New Project'}
           </h2>
           <form
             className="space-y-4"
@@ -80,10 +180,32 @@ const ProjectsD = () => {
               </label>
               <input
                 type="file"
+                id="project-image-input"
                 onChange={handleImageChange}
                 accept="image/*"
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              {image && (
+                <div className="mt-2">
+                  <div className="text-xs text-gray-600 break-all">{image}</div>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTriggerImageSelect}
+                      className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm"
+                    >
+                      Change Image
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -119,7 +241,15 @@ const ProjectsD = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setIsEditMode(false);
+                  setEditingProjectId(null);
+                  setTitle('');
+                  setDescription('');
+                  setImage('');
+                  setError(null);
+                }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 Cancel
@@ -146,30 +276,42 @@ const ProjectsD = () => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {projects.map((project) => (
-              <tr key={project.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {project.id}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {project.name}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(project.id)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(project.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    Delete
-                  </button>
+            {Array.isArray(constructionProject) &&
+            constructionProject.length > 0 ? (
+              constructionProject.map((project) => (
+                <tr
+                  key={project._id || project.id}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {project._id || project.id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {project.title || project.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button
+                      onClick={() => handleEdit(project._id || project.id)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project._id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                  No projects found.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
