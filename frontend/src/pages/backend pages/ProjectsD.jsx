@@ -32,25 +32,29 @@ const ProjectsD = () => {
     setEditingProjectId(null);
     setTitle('');
     setDescription('');
-    setImage('');
     setError(null);
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
 
-    const filename = `D:\\Unity-Construction-\\images\\${file.name}`;
-    setImage(filename);
-  };
+    const data = new FormData();
+    data.append('file', file);
+    data.append('upload_preset', 'construction_first');
+    data.append('cloud_name', 'dziuccshe');
 
-  const handleRemoveImage = () => {
-    setImage('');
-  };
+    const res = await fetch(
+      'https://api.cloudinary.com/v1_1/dziuccshe/image/upload',
+      {
+        method: 'POST',
+        body: data,
+      }
+    );
 
-  const handleTriggerImageSelect = () => {
-    const input = document.getElementById('project-image-input');
-    if (input) input.click();
+    const uploadedImageURL = await res.json();
+    setImage(uploadedImageURL.url);
+    console.log(file);
   };
 
   const handleSubmit = async (e) => {
@@ -185,27 +189,6 @@ const ProjectsD = () => {
                 accept="image/*"
                 className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
-              {image && (
-                <div className="mt-2">
-                  <div className="text-xs text-gray-600 break-all">{image}</div>
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleTriggerImageSelect}
-                      className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 text-sm"
-                    >
-                      Change Image
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleRemoveImage}
-                      className="bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 text-sm"
-                    >
-                      Remove Image
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
