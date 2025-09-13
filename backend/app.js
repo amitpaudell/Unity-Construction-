@@ -5,6 +5,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 
 const constructionRoutes = require('./routes/construction');
+const servicesRoutes = require('./routes/services');
 const app = express();
 
 app.use(
@@ -21,6 +22,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/construction', constructionRoutes);
+app.use('/api/service', servicesRoutes);
 
 mongoose
   .connect(process.env.MONGO_URI)
